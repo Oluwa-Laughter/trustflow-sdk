@@ -74,6 +74,13 @@ describe('package exports map (#100)', () => {
   });
 
   describe('root exports coverage (#443, #451, #442)', () => {
+    it('exports WebAuthnManager from the package root', () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { WebAuthnManager } = require('../src');
+      expect(typeof WebAuthnManager).toBe('function');
+      expect(new WebAuthnManager()).toBeInstanceOf(WebAuthnManager);
+    });
+
     it('exports AbstractContractClient, SignAndSubmitFn, SimulationResult from root (#443)', () => {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const sdk = require('../src');

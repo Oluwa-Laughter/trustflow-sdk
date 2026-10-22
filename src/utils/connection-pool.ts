@@ -27,7 +27,7 @@
 export interface PoolConfig {
   /** Maximum number of sockets to keep alive per host. Defaults to 50. */
   maxSockets?: number;
-  /** Maximum number of requests to queue when sockets are at max. Defaults to 256. */
+  /** Maximum number of idle keep-alive sockets retained per host. Defaults to 256. */
   maxFreeSockets?: number;
   /** Socket timeout in milliseconds. Defaults to 60000. */
   socketTimeoutMs?: number;
@@ -63,15 +63,15 @@ export const DEFAULT_POOL_CONFIG: Required<PoolConfig> = {
  */
 export interface PooledAgent {
   /** Live sockets, keyed by `host:port`. */
-  sockets?: Readonly<Record<string, unknown[]>>;
+  sockets?: Readonly<Record<string, unknown[] | undefined>>;
   /** Idle sockets, keyed by `host:port`. */
-  freeSockets?: Readonly<Record<string, unknown[]>>;
+  freeSockets?: Readonly<Record<string, unknown[] | undefined>>;
   /** Requests queued per host. */
-  requests?: Readonly<Record<string, number>>;
+  requests?: Readonly<Record<string, number | unknown[] | undefined>>;
   /** Closes every socket. */
   destroy(): void;
   /** Enables TCP keep-alive. */
-  keepSocketAlive?: boolean;
+  keepSocketAlive?: unknown;
 }
 
 /**
@@ -79,6 +79,7 @@ export interface PooledAgent {
  */
 export interface PoolStats {
   totalSockets: number;
+  /** Total idle keep-alive sockets across all hosts. */
   freeSockets: number;
   socketsPerHost: Record<string, number>;
   requestsQueued: number;
@@ -115,7 +116,7 @@ export function getHttpAgentStats(agent: PooledAgent): PoolStats {
     freeSockets += Array.isArray(sockets) ? sockets.length : 0;
   }
 
-  const requestsQueued = Object.values(agent.requests ?? {}).reduce(
+  const requestsQueued = Object.values(agent.requests ?? {}).reduce<number>(
     (sum, queued) => sum + (typeof queued === 'number' ? queued : 0),
     0,
   );
@@ -130,7 +131,11 @@ export function getHttpAgentStats(agent: PooledAgent): PoolStats {
  *   {@link PooledAgent}
  */
 export function destroyPoolAgent(agent: PooledAgent): void {
-  agent.destroy();
+  try {
+    agent.destroy();
+  } finally {
+    unregisterPoolAgent(agent);
+  }
 }
 
 /**
@@ -143,7 +148,7 @@ export interface PoolMonitorConfig {
   onStats?: (stats: PoolStats) => void;
   /** Callback when warnings are triggered. */
   onWarning?: (warning: string) => void;
-  /** Warning threshold for free sockets. If below this, triggers warning. Defaults to 10. */
+  /** Warn when the total idle keep-alive socket count is below this value. Defaults to 10. */
   warningFreeSocketsThreshold?: number;
 }
 

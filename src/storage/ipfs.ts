@@ -59,6 +59,13 @@ const DEFAULT_FALLBACK_GATEWAYS = [
   'https://dweb.link/ipfs',
 ];
 
+/** Build consistent path-style gateway URLs for both uploads and reads. */
+function gatewayCidUrl(gateway: string, cid: string): string {
+  const cleanGateway = gateway.replace(/\/+$/, '');
+  const baseUrl = cleanGateway.includes('/ipfs') ? cleanGateway : `${cleanGateway}/ipfs`;
+  return `${baseUrl}/${cid}`;
+}
+
 export interface IPFSConfig {
   /** Upload endpoint. Defaults to a web3.storage-compatible raw-body upload API. */
   apiUrl?: string;
@@ -184,7 +191,7 @@ export class IPFSStorage {
         return { ok: false, error: 'Upload succeeded but response did not include a valid CID' };
       }
       logger.info('IPFS upload succeeded', { cid });
-      return { ok: true, data: { cid, url: `${this.gatewayUrl}/${cid}` } };
+      return { ok: true, data: { cid, url: gatewayCidUrl(this.gatewayUrl, cid) } };
     } catch (err) {
       logger.error('IPFS upload failed', { error: toApiErrorMessage(err) });
       return { ok: false, error: toApiErrorMessage(err) };
@@ -213,8 +220,7 @@ export class IPFSStorage {
 
     for (const gateway of this.gateways) {
       const cleanGateway = gateway.replace(/\/+$/, '');
-      const baseUrl = cleanGateway.includes('/ipfs') ? cleanGateway : `${cleanGateway}/ipfs`;
-      const url = `${baseUrl}/${cid}`;
+      const url = gatewayCidUrl(gateway, cid);
       try {
         logger.debug('Resolving IPFS CID from gateway', { gateway: cleanGateway, cid });
         const response = await axios.get(url, {

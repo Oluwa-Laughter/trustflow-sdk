@@ -78,6 +78,9 @@ jobs:
       - name: Build package
         run: npm run build
 
+      - name: Check published package types
+        run: npm run typecheck:published
+
       - name: Build documentation
         run: npm run docs
 

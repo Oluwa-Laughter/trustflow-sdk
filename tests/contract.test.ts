@@ -71,7 +71,10 @@ describe('contract module', () => {
     });
 
     it('buildDisputeArgs returns valid arguments', () => {
-      const args = buildDisputeArgs('escrow1', 'fraud');
+      const args = buildDisputeArgs(
+        'escrow1',
+        'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+      );
       expect(args.length).toBe(2);
     });
   });

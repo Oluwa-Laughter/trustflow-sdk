@@ -44,6 +44,16 @@ export function toBeValidScVal(received: unknown) {
   };
 }
 
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace jest {
+    interface Matchers<R> {
+      /** Asserts the value is a structurally valid Stellar ScVal. */
+      toBeValidScVal(): R;
+    }
+  }
+}
+
 /** Configuration options for `createMockHorizonServer`. */
 export interface MockHorizonServerOptions {
   balanceXLM?: string;

@@ -25,6 +25,9 @@ const REFRESH_LEAD_MS = 60_000;
  */
 const MIN_SCHEDULE_MARGIN_MS = 5_000;
 
+/** Largest delay supported by both Node and browser timers (signed 32-bit). */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 /** Callback invoked when a session is silently refreshed or when refresh fails. */
 export interface TokenRefreshListener {
   /** Called after a successful silent refresh with the new session. */
@@ -133,14 +136,22 @@ export class TokenRefreshManager {
         // to prevent unhandled promise rejection in fire-and-forget context.
       });
     } else {
+      // Long-lived JWTs may expire more than 24.8 days from now. Instead of
+      // overflowing setTimeout (and refreshing immediately), wait in chunks and
+      // recompute the expiry only when we reach the final refresh window.
+      const delayMs = Math.min(msUntilRefresh, MAX_TIMER_DELAY_MS);
       logger.debug('TokenRefreshManager: scheduling refresh', {
-        inMs: msUntilRefresh,
+        inMs: delayMs,
       });
       this.timerId = setTimeout(() => {
-        this.performRefresh().catch(() => {
-          // Error already reported via listener.onRefreshError.
-        });
-      }, msUntilRefresh);
+        if (msUntilRefresh > MAX_TIMER_DELAY_MS) {
+          this.start();
+        } else {
+          this.performRefresh().catch(() => {
+            // Error already reported via listener.onRefreshError.
+          });
+        }
+      }, delayMs);
     }
   }
 

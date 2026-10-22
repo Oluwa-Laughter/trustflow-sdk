@@ -84,6 +84,7 @@
     "test:e2e": "jest --config jest.e2e.config.js",
     "examples": "tsx",
     "examples:check": "tsc -p examples/tsconfig.json --noEmit",
+    "typecheck:published": "tsc -p examples/tsconfig.published.json --noEmit",
     "lint": "eslint src",
     "lint:strict": "eslint src --config eslint.strict.config.mjs",
     "lint:fix": "eslint src --fix",

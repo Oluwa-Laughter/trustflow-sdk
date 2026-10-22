@@ -55,10 +55,21 @@ describe('contract argument XDR payloads', () => {
     });
 
     it('buildDisputeArgs returns XDR-decodable ScVal values', () => {
-        const args = buildDisputeArgs('escrow-1', 'work quality dispute');
+        const args = buildDisputeArgs('escrow-1', ADDR_A);
 
         expect(args).toHaveLength(2);
         args.forEach((value) => expect(value).toBeValidScVal());
+        expect((args[1] as xdr.ScVal).switch().name).toBe('scvAddress');
+    });
+
+    it('buildDisputeArgs encodes the caller as an address with or without reason', () => {
+        const withoutReason = buildDisputeArgs('escrow-1', ADDR_A);
+        const withReason = buildDisputeArgs('escrow-1', ADDR_A, 'work quality dispute');
+
+        expect(withReason).toHaveLength(3);
+        expect((withoutReason[1] as xdr.ScVal).switch().name).toBe('scvAddress');
+        expect((withReason[1] as xdr.ScVal).switch().name).toBe('scvAddress');
+        withReason.forEach((value) => expect(value).toBeValidScVal());
     });
 
     it('buildVoteArgs returns XDR-decodable ScVal values for a plaintext vote', () => {

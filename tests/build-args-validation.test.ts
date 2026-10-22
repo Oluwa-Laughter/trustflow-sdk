@@ -54,11 +54,24 @@ describe('build.ts address / id validation (#111)', () => {
   });
 
   describe('buildDisputeArgs', () => {
-    it('accepts a valid escrowId', () => {
-      expect(() => buildDisputeArgs('esc-1', 'goods not delivered')).not.toThrow();
+    it('accepts a valid escrowId and caller in both argument shapes', () => {
+      expect(() => buildDisputeArgs('esc-1', VALID_ADDR)).not.toThrow();
+      expect(() => buildDisputeArgs('esc-1', VALID_ADDR, 'goods not delivered')).not.toThrow();
     });
     it('rejects an empty escrowId', () => {
-      expect(() => buildDisputeArgs('', 'reason')).toThrow(TrustFlowError);
+      expect(() => buildDisputeArgs('', VALID_ADDR)).toThrow(TrustFlowError);
+    });
+    it.each([
+      ['two arguments', undefined],
+      ['three arguments', 'goods not delivered'],
+    ])('rejects a malformed caller in the %s shape with a validation error', (_shape, reason) => {
+      try {
+        buildDisputeArgs('esc-1', 'not-a-stellar-address', reason);
+        throw new Error('should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(TrustFlowError);
+        expect((error as TrustFlowError).code).toBe('VALIDATION_ERROR');
+      }
     });
   });
 

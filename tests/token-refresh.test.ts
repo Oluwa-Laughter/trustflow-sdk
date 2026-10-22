@@ -177,6 +177,49 @@ describe('TokenRefreshManager', () => {
       manager.stop();
     });
 
+    it('caps a 60-day token timer without refreshing early', () => {
+      const expSeconds = Math.floor(Date.now() / 1000) + 60 * 24 * 60 * 60;
+      saveSession(fakeJwt(expSeconds), 'GTEST', expSeconds * 1000);
+      const timeoutSpy = jest.spyOn(global, 'setTimeout');
+      const manager = new TokenRefreshManager({ apiUrl: 'https://api.test' });
+
+      try {
+        manager.start();
+        expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2_147_483_647);
+        expect(mockPostCallCount).toBe(0);
+        jest.advanceTimersByTime(2_147_483_647);
+        expect(mockPostCallCount).toBe(0);
+        expect(jest.getTimerCount()).toBe(1);
+        expect(timeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 2_147_483_647);
+      } finally {
+        manager.stop();
+        timeoutSpy.mockRestore();
+      }
+    });
+
+    it('does not enter a refresh loop for a long-lived JWT', async () => {
+      const durationMs = 60 * 24 * 60 * 60_000;
+      const expSeconds = Math.floor(Date.now() / 1000) + durationMs / 1000;
+      saveSession(fakeJwt(expSeconds), 'GTEST', expSeconds * 1000);
+      mockPostResponse = { data: { token: fakeJwt(expSeconds + 60 * 24 * 60 * 60) } };
+
+      const manager = new TokenRefreshManager({ apiUrl: 'https://api.test' });
+      try {
+        manager.start();
+        // Cross two full 32-bit timer chunks without prematurely calling the API.
+        await jest.advanceTimersByTimeAsync(2 * 2_147_483_647);
+        expect(mockPostCallCount).toBe(0);
+        expect(jest.getTimerCount()).toBe(1);
+
+        // Advance into the actual refresh window; only one refresh may happen.
+        await jest.advanceTimersByTimeAsync(durationMs - 60_000 - 2 * 2_147_483_647 + 2_000);
+        expect(mockPostCallCount).toBe(1);
+        expect(jest.getTimerCount()).toBe(1);
+      } finally {
+        manager.stop();
+      }
+    });
+
     it('triggers immediate refresh when token is near expiry', () => {
       const expSeconds = Math.floor(Date.now() / 1000) + 30; // 30s left (< 60s lead)
       const token = fakeJwt(expSeconds);

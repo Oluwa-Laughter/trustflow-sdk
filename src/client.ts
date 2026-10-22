@@ -806,7 +806,9 @@ export class TrustFlowClient {
   }
 
   /**
-   * Disconnects the client, closing all pooled HTTP/HTTPS sockets and clearing caches (Issue #359).
+   * Disconnects the client and destroys Node HTTP/HTTPS agents registered by
+   * the SDK factories. Browser-managed sockets and externally supplied agents
+   * are not owned by this registry (Issues #359, #547).
    */
   async disconnect(): Promise<void> {
     this._connected = false;

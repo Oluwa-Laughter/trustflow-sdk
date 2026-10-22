@@ -117,14 +117,15 @@ export function buildDisputeArgs(
   maybeReason?: string,
 ): unknown[] {
   assertEscrowId(escrowId);
+  assertStellarAddress(caller, 'caller');
+  const args: unknown[] = [
+    nativeToScVal(escrowId, { type: 'string' }),
+    new Address(caller).toScVal(),
+  ];
   if (maybeReason !== undefined) {
-    return [
-      nativeToScVal(escrowId, { type: 'string' }),
-      new Address(caller).toScVal(),
-      nativeToScVal(maybeReason, { type: 'string' }),
-    ];
+    args.push(nativeToScVal(maybeReason, { type: 'string' }));
   }
-  return [nativeToScVal(escrowId, { type: 'string' }), nativeToScVal(caller, { type: 'string' })];
+  return args;
 }
 
 /**

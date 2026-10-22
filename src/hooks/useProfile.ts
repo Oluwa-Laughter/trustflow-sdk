@@ -11,19 +11,23 @@ export function useProfile(profileClient: ProfileClient, address?: string | null
 
   useEffect(() => {
     let cancelled = false;
+    const callId = ++callIdRef.current;
     setProfile(null);
     setError(null);
 
     if (!address) {
       setLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+        ++callIdRef.current;
+      };
     }
 
     setLoading(true);
     profileClient
       .getProfile(address)
       .then((res) => {
-        if (cancelled) return;
+        if (cancelled || callId !== callIdRef.current) return;
         if (res.ok) {
           setProfile(res.data);
           setError(null);
@@ -33,18 +37,19 @@ export function useProfile(profileClient: ProfileClient, address?: string | null
         }
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
+        if (cancelled || callId !== callIdRef.current) return;
         setError(err instanceof Error ? err.message : String(err));
         setProfile(null);
       })
       .finally(() => {
-        if (!cancelled) {
+        if (!cancelled && callId === callIdRef.current) {
           setLoading(false);
         }
       });
 
     return () => {
       cancelled = true;
+      ++callIdRef.current;
     };
   }, [profileClient, address]);
 

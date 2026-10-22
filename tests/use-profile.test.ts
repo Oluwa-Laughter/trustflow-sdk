@@ -154,6 +154,34 @@ describe('useProfile', () => {
   });
 
   describe('update', () => {
+    it('keeps an update when the initial fetch resolves with stale data afterward', async () => {
+      let resolveFetch: (value: { ok: true; data: Profile }) => void = () => undefined;
+      const getProfile = jest.fn().mockReturnValue(
+        new Promise<{ ok: true; data: Profile }>((resolve) => {
+          resolveFetch = resolve;
+        }),
+      );
+      const updatedProfile: Profile = { ...MOCK_PROFILE, displayName: 'Alice Updated' };
+      const updateProfile = jest.fn().mockResolvedValue({ ok: true, data: updatedProfile });
+      const client = makeClient(getProfile, updateProfile);
+      const { result } = renderHook(() => useProfile(client, 'GA'));
+
+      expect(result.current.loading).toBe(true);
+      await act(async () => {
+        await result.current.update({ displayName: 'Alice Updated' });
+      });
+      expect(result.current.profile).toEqual(updatedProfile);
+      expect(result.current.loading).toBe(false);
+
+      await act(async () => {
+        resolveFetch({ ok: true, data: MOCK_PROFILE });
+      });
+
+      expect(result.current.profile).toEqual(updatedProfile);
+      expect(result.current.error).toBeNull();
+      expect(result.current.loading).toBe(false);
+    });
+
     it('updates profile and sets state on success', async () => {
       const getProfile = jest.fn().mockResolvedValue({ ok: true, data: MOCK_PROFILE });
       const updatedProfile: Profile = { ...MOCK_PROFILE, displayName: 'Alice Updated' };
